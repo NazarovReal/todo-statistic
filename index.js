@@ -1,7 +1,5 @@
-const {getAllFilePathsWithExtension, readFile} = require('./fileSystem');
-const {readLine} = require('./console');
-
-const files = getFiles();
+const { getAllFilePathsWithExtension, readFile } = require('./fileSystem');
+const { readLine } = require('./console');
 
 console.log('Please, write your command!');
 readLine(processCommand);
@@ -12,48 +10,107 @@ function getFiles() {
 }
 
 function parseTodo(line) {
+    const raw = line;
+    const importance = (line.match(/!/g) || []).length;
+
     const body = line.trimStart().slice(7).trim(); 
     const parts = body.split(';').map(s => s.trim());
-    const [author, date, comment] = parts;
-    return { author, date, comment, raw: line };
+    if (parts.length < 3) {
+        return { raw, author: null, date: null, comment: null, importance };
+    }
+    const [author, dateRaw, comment] = parts;
+    const date = parseDate(dateRaw);
+    return { raw, author: author || null, date, comment: comment || null, importance };
 }
 
-function processCommand(command) {
-    switch (command) {
-        case 'exit':
+function parseDate(s) {
+    const d = new Date(s);
+    return isNaN(d.getTime()) ? null : d;
+}
+
+function collectTodos() {
+    return getFiles().flatMap(file =>
+        file
+            .split('\n')
+            .filter(line => line.trimStart().startsWith('// TODO '))
+            .map(parseTodo)
+    );
+}
+
+function processCommand(commandRaw) {
+    const command = commandRaw.trim();
+
+    switch (true) {
+        case command === 'exit': {
             process.exit(0);
             break;
-        case 'show':
-            const files = getFiles();
-            const todos = files.reduce((acc, file) => {
-                const fileTodos = file.split('\n').filter(line => line.startsWith('// TODO'));
-                return acc.concat(fileTodos);
-            }, []);
-            todos.forEach(todo => console.log(todo));
+        }
+
+        
+        case command === 'show': {
+            collectTodos().forEach(t => console.log(t.raw));
             break;
-        case 'important':
-            const importantTodos = files.reduce((acc, file) => {
-                const fileImportantTodos = file.split('\n').filter(line => line.startsWith('// TODO') && line.includes('!'));
-                return acc.concat(fileImportantTodos);
-            }, []);
-            importantTodos.forEach(todo => console.log(todo));
+        }
+
+        case command === 'important': {
+            collectTodos()
+                .filter(t => t.importance > 0)
+                .forEach(t => console.log(t.raw));
             break;
-        case command.startsWith('user '): 
+        }
+
+        case command.startsWith('user '): {
             const username = command.slice(5).trim().toLowerCase();
-            const todo = getFiles().flatMap(file =>
-                file
-                    .split('\n')
-                    .filter(line => line.trimStart().startsWith('// TODO '))
-                    .map(parseTodo)
-                    .filter(t => t && t.author.toLowerCase() === username)
-                    .map(t => t.raw)
-            );
-            todo.forEach(todo => console.log(todo));
+            if (!username) {
+                console.log('wrong command');
+                break;
+            }
+            collectTodos()
+                .filter(t => t.author && t.author.toLowerCase() === username)
+                .forEach(t => console.log(t.raw));
             break;
-        default:
+        }
+
+        case command.startsWith('sort '): {
+            const sortBy = command.slice(5).trim();
+            const todos = collectTodos();
+
+            if (sortBy === 'importance') {
+                todos
+                    .sort((a, b) => (b.importance || 0) - (a.importance || 0))
+                    .forEach(t => console.log(t.raw));
+                break;
+            }
+
+            if (sortBy === 'user') {
+                todos
+                    .sort((a, b) => {
+                        const ua = (a.author || '').toLowerCase();
+                        const ub = (b.author || '').toLowerCase();
+                        if (ua && !ub) return -1;
+                        if (!ua && ub) return 1;
+                        return ua.localeCompare(ub);
+                    })
+                    .forEach(t => console.log(t.raw));
+                break;
+            }
+
+            if (sortBy === 'date') {
+                todos
+                    .sort((a, b) => {
+                        const da = a.date ? a.date.getTime() : -Infinity;
+                        const db = b.date ? b.date.getTime() : -Infinity;
+                        return db - da; 
+                    })
+                    .forEach(t => console.log(t.raw));
+                break;
+            }
+            break;
+        }
+
+        default: {
             console.log('wrong command');
             break;
+        }
     }
 }
-
-// TODO you can do it!
