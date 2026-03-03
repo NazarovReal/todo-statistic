@@ -16,6 +16,20 @@ function processCommand(command) {
         case 'exit':
             process.exit(0);
             break;
+        case 'show':
+            const files = getFiles();
+            const todos = files.reduce((acc, file) => {
+                const fileTodos = file.split('\n').filter(line => line.startWith('// TODO'));
+                return acc.concat(fileTodos);
+            }, []);
+            todos.forEach(todo => console.log(todo));
+            break;
+        case 'important':
+            const importantTodos = files.reduce((acc, file) => {
+                const fileImportantTodos = file.split('\n').filter(line => line.startsWith('// TODO') && line.includes('!'));
+                return acc.concat(fileImportantTodos);
+            }, []);
+            importantTodos.forEach(todo => console.log(todo));
         default:
             console.log('wrong command');
             break;
