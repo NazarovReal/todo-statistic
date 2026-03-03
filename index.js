@@ -19,7 +19,7 @@ function processCommand(command) {
         case 'show':
             const files = getFiles();
             const todos = files.reduce((acc, file) => {
-                const fileTodos = file.split('\n').filter(line => line.startWith('// TODO'));
+                const fileTodos = file.split('\n').filter(line => line.startsWith('// TODO'));
                 return acc.concat(fileTodos);
             }, []);
             todos.forEach(todo => console.log(todo));
@@ -30,6 +30,7 @@ function processCommand(command) {
                 return acc.concat(fileImportantTodos);
             }, []);
             importantTodos.forEach(todo => console.log(todo));
+            break;
         default:
             console.log('wrong command');
             break;
