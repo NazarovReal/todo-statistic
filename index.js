@@ -11,6 +11,13 @@ function getFiles() {
     return filePaths.map(path => readFile(path));
 }
 
+function parseTodo(line) {
+    const body = line.trimStart().slice(7).trim(); 
+    const parts = body.split(';').map(s => s.trim());
+    const [author, date, comment] = parts;
+    return { author, date, comment, raw: line };
+}
+
 function processCommand(command) {
     switch (command) {
         case 'exit':
@@ -30,6 +37,18 @@ function processCommand(command) {
                 return acc.concat(fileImportantTodos);
             }, []);
             importantTodos.forEach(todo => console.log(todo));
+            break;
+        case command.startsWith('user '): 
+            const username = command.slice(5).trim().toLowerCase();
+            const todo = getFiles().flatMap(file =>
+                file
+                    .split('\n')
+                    .filter(line => line.trimStart().startsWith('// TODO '))
+                    .map(parseTodo)
+                    .filter(t => t && t.author.toLowerCase() === username)
+                    .map(t => t.raw)
+            );
+            todo.forEach(todo => console.log(todo));
             break;
         default:
             console.log('wrong command');
